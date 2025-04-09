@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Teste de Redirecionamento - Dados do Navegador</title>
+  <script>
+    // Funções para manipular cookies
+    function setCookie(name, value, days = 30) {
+      const expires = new Date();
+      expires.setDate(expires.getDate() + days);
+      document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+    }
+
+    function getCookie(name) {
+      const cookies = document.cookie.split(';');
+      for (let c of cookies) {
+        c = c.trim();
+        if (c.indexOf(name + '=') === 0) {
+          return c.substring(name.length + 1);
+        }
+      }
+      return null;
+    }
+
+    // Captura os dados reais do navegador e os salva nos cookies, se ainda não estiverem definidos
+    function initCookies() {
+      // Captura a URL de origem, disponível no document.referrer
+      if (!getCookie('referrer')) {
+        setCookie('referrer', encodeURIComponent(document.referrer || ''));
+      }
+      
+      // Captura a URL atual (landing URL)
+      if (!getCookie('landingUrl')) {
+        setCookie('landingUrl', encodeURIComponent(window.location.href));
+      }
+      
+      // Detecta o dispositivo (exemplo simples: com base na largura da janela)
+      if (!getCookie('device')) {
+        const device = window.innerWidth < 768 ? 'mobile' : 'desktop';
+        setCookie('device', encodeURIComponent(device));
+      }
+      
+      // Armazena a primeira landing URL e a data/hora de acesso, caso não estejam definidos
+      if (!getCookie('firstLandingUrl')) {
+        setCookie('firstLandingUrl', encodeURIComponent(window.location.href));
+      }
+      if (!getCookie('firstLandingUrlDateTime')) {
+        setCookie('firstLandingUrlDateTime', new Date().toISOString());
+      }
+      
+      // Os dados do primeiro clique serão capturados no momento do clique, se ainda não estiverem setados
+    }
+
+    // Captura os dados do primeiro clique e os salva caso ainda não existam
+    function captureFirstClick() {
+      if (!getCookie('firstClickUrl')) {
+        setCookie('firstClickUrl', encodeURIComponent(window.location.href));
+      }
+      if (!getCookie('firstClickUrlDateTime')) {
+        setCookie('firstClickUrlDateTime', new Date().toISOString());
+      }
+    }
+
+    // Monta a URL de redirecionamento utilizando os dados dos cookies
+    function urlBuilder() {
+      const baseUrl = 'SUA URL AQUI;
+      const params = new URLSearchParams({
+        referrer: getCookie('referrer') || '',
+        landingUrl: getCookie('landingUrl') || '',
+        dispositivo: getCookie('device') || '',
+        firstClickUrl: getCookie('firstClickUrl') || '',
+        firstClickUrlDateTime: getCookie('firstClickUrlDateTime') || '',
+        firstLandingUrl: getCookie('firstLandingUrl') || '',
+        firstLandingUrlDateTime: getCookie('firstLandingUrlDateTime') || ''
+      });
+      return `${baseUrl}?${params.toString()}`;
+    }
+
+    // Intercepta a URL, captura dados do primeiro clique e exibe um prompt de confirmação antes do redirecionamento
+    function interceptAndRedirect() {
+      captureFirstClick();
+      const url = urlBuilder();
+      console.log("URL gerada:", url);
+      if (confirm("Você será redirecionado para:\n\n" + url + "\n\nContinuar?")) {
+        window.location.href = url;
+      } else {
+        console.log("Redirecionamento cancelado.");
+      }
+    }
+
+    // Exibe a URL montada na página para visualização dos parâmetros
+    function displayParameters() {
+      const url = urlBuilder();
+      document.getElementById("parameters").textContent = url;
+    }
+
+    // Inicializa a captura dos dados do navegador assim que a página carregar
+    document.addEventListener('DOMContentLoaded', function() {
+      initCookies();
+      displayParameters();
+    });
+  </script>
+</head>
+<body>
+  <h1>Teste de Redirecionamento - Dados do Navegador</h1>
+  <p>Esta página captura os dados reais do navegador (por exemplo, document.referrer e window.location.href) e os salva em cookies.</p>
+  <p>A URL final, com os parâmetros montados, é exibida abaixo:</p>
+  <div id="parameters" style="background:#f0f0f0; padding:10px; border:1px solid #ccc;"></div>
+  <p>Ao clicar no botão, os dados do primeiro clique serão capturados (se ainda não estiverem) e a URL de redirecionamento será exibida para confirmação.</p>
+  <button onclick="interceptAndRedirect()">Acessar Cadastro</button>
+</body>
+</html>
