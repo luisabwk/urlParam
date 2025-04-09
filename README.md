@@ -30,5 +30,5 @@ Este projeto fornece uma solução em JavaScript para capturar informações do 
 1. **Clonando o Repositório:**
 
    ```bash
-   git clone https://github.com/seu-usuario/cookie-based-redirection-script.git
+   git clone https://github.com/seu-usuario/urlParam.git
    cd cookie-based-redirection-script
