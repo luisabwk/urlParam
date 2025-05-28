@@ -24,11 +24,3 @@ Este projeto fornece uma solução em JavaScript para capturar informações do 
 
 - **index.html** – Arquivo HTML principal que contém o código JavaScript de captura, armazenamento e redirecionamento.
 - **README.md** – Este arquivo, que documenta o funcionamento, instalação e uso do projeto.
-
-## Como Testar / Usar
-
-1. **Clonando o Repositório:**
-
-   ```bash
-   git clone https://github.com/seu-usuario/urlParam.git
-   cd cookie-based-redirection-script
