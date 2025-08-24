@@ -209,10 +209,18 @@
     setupLinkInterceptor();
   }
   
-  // Expõe função para uso externo
+  // Expõe funções para uso externo
   window.interceptAndRedirect = interceptAndRedirect;
+  window.initCookies = initCookies;
+  window.captureFirstClick = captureFirstClick;
+  window.urlBuilder = urlBuilder;
+  window.getCookie = getCookie;
+  window.setCookie = setCookie;
   
   // Log de inicialização
   console.log('Trinks Debug: Script carregado e funcionando');
+  console.log('Trinks Debug: Funções expostas:', Object.keys(window).filter(key => 
+    ['interceptAndRedirect', 'initCookies', 'captureFirstClick', 'urlBuilder', 'getCookie', 'setCookie'].includes(key)
+  ));
 })();
 </script>
