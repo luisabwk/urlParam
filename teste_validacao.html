@@ -7,6 +7,30 @@
   <!-- Script principal do GTM -->
   <script src="versao_atual_GTM.js"></script>
   
+  <!-- Script de fallback caso o principal não carregue -->
+  <script>
+    // Aguarda o carregamento da página
+    document.addEventListener('DOMContentLoaded', function() {
+      // Verifica se as funções foram carregadas
+      setTimeout(function() {
+        if (typeof window.initCookies === 'undefined') {
+          console.log('Trinks Debug: Script principal não carregou, carregando fallback...');
+          
+          // Carrega o script novamente
+          var script = document.createElement('script');
+          script.src = 'versao_atual_GTM.js?v=' + Date.now();
+          script.onload = function() {
+            console.log('Trinks Debug: Script principal carregado via fallback');
+          };
+          script.onerror = function() {
+            console.log('Trinks Debug: Erro ao carregar script principal');
+          };
+          document.head.appendChild(script);
+        }
+      }, 1000);
+    });
+  </script>
+  
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
     .container { max-width: 800px; margin: 0 auto; }
