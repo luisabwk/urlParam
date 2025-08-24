@@ -7,6 +7,30 @@
   <!-- Script principal do GTM -->
   <script src="versao_atual_GTM.js"></script>
   
+  <!-- Script de fallback caso o principal não carregue -->
+  <script>
+    // Aguarda o carregamento da página
+    document.addEventListener('DOMContentLoaded', function() {
+      // Verifica se as funções foram carregadas
+      setTimeout(function() {
+        if (typeof window.initCookies === 'undefined') {
+          console.log('Trinks Debug: Script principal não carregou, carregando fallback...');
+          
+          // Carrega o script novamente
+          var script = document.createElement('script');
+          script.src = 'versao_atual_GTM.js?v=' + Date.now();
+          script.onload = function() {
+            console.log('Trinks Debug: Script principal carregado via fallback');
+          };
+          script.onerror = function() {
+            console.log('Trinks Debug: Erro ao carregar script principal');
+          };
+          document.head.appendChild(script);
+        }
+      }, 1000);
+    });
+  </script>
+  
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
     .container { max-width: 800px; margin: 0 auto; }
@@ -24,6 +48,30 @@
   <div class="container">
     <h1>🧪 Teste de Validação - Correções Implementadas</h1>
     
+    <div class="section warning">
+      <h3>⚠️ COMO USAR - LEIA PRIMEIRO!</h3>
+      <ol>
+        <li><strong>Abra o DevTools (F12)</strong> e vá para a aba Console</li>
+        <li><strong>Aguarde alguns segundos</strong> para o script carregar</li>
+        <li><strong>Clique nos botões de teste</strong> acima</li>
+        <li><strong>Verifique se as mensagens "Trinks Debug:"</strong> aparecem no console</li>
+        <li><strong>Monitore os logs</strong> na seção abaixo</li>
+      </ol>
+    </div>
+
+    <div class="section success">
+      <h3>✅ RESULTADO ESPERADO - O QUE DEVE ACONTECER</h3>
+      <p>Após executar os testes, você deve ver:</p>
+      <ul>
+        <li><strong>✅ Script carregado</strong> - Mensagens "Trinks Debug:" no console</li>
+        <li><strong>✅ Cookies sendo criados</strong> corretamente</li>
+        <li><strong>✅ Eventos sendo enviados</strong> para o dataLayer</li>
+        <li><strong>✅ URLs sendo construídas</strong> com parâmetros</li>
+        <li><strong>✅ Campo "URL Gerada"</strong> sendo preenchido</li>
+        <li><strong>✅ Logs detalhados</strong> em cada etapa</li>
+      </ul>
+    </div>
+
     <div class="section info">
       <h3>📋 Objetivo do Teste</h3>
       <p>Este arquivo testa se as correções implementadas no <code>versao_atual_GTM.js</code> estão funcionando corretamente.</p>
@@ -64,26 +112,7 @@
       <div id="logs" class="log"></div>
     </div>
 
-    <div class="section warning">
-      <h3>⚠️ Como Usar</h3>
-      <ol>
-        <li>Abra o DevTools (F12) e vá para a aba Console</li>
-        <li>Clique nos botões de teste acima</li>
-        <li>Verifique se as mensagens "Trinks Debug:" aparecem no console</li>
-        <li>Monitore os logs na seção abaixo</li>
-      </ol>
-    </div>
 
-    <div class="section success">
-      <h3>✅ Resultado Esperado</h3>
-      <p>Após executar os testes, você deve ver:</p>
-      <ul>
-        <li>Cookies sendo criados corretamente</li>
-        <li>Eventos sendo enviados para o dataLayer</li>
-        <li>URLs sendo construídas com parâmetros</li>
-        <li>Logs detalhados em cada etapa</li>
-      </ul>
-    </div>
   </div>
 
   <script>
