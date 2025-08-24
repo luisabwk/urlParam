@@ -1,226 +1,293 @@
 <script>
 (function(){
-  // Função para definir um cookie
+  // ============= CONFIGURAÇÃO =============
+  var TARGET_URL = 'https://www.trinks.com/programa-para-salao-de-beleza/cadastrar-meu-estabelecimento/dados-iniciais';
+  var DEBUG_MODE = true; // Mudar para false em produção
+  
+  // ============= FUNÇÕES DE COOKIE =============
   function setCookie(name, value, days) {
-    if (typeof days === 'undefined') days = 30;
+    days = days || 30;
     var expires = new Date();
-    expires.setDate(expires.getDate() + days);
-    document.cookie = name + '=' + value + ';expires=' + expires.toUTCString() + ';path=/';
+    expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+    document.cookie = name + '=' + value + ';expires=' + expires.toUTCString() + ';path=/;SameSite=Lax';
   }
   
-  // Função para obter o valor de um cookie
   function getCookie(name) {
-    var cookies = document.cookie.split(';');
-    for (var i = 0; i < cookies.length; i++) {
-      var c = cookies[i].trim();
-      if (c.indexOf(name + '=') === 0) {
-        return c.substring(name.length + 1);
-      }
+    var nameEQ = name + '=';
+    var ca = document.cookie.split(';');
+    for(var i = 0; i < ca.length; i++) {
+      var c = ca[i];
+      while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+      if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
     }
     return null;
   }
   
-  // Função para codificar URLs de forma segura (sem dupla codificação)
-  function safeEncodeURIComponent(str) {
-    try { 
-      if (!str) return '';
-      // Verifica se já está codificado para evitar dupla codificação
+  function safeEncode(str) {
+    if (!str) return '';
+    try {
+      // Tenta decodificar primeiro para evitar dupla codificação
       try {
-        decodeURIComponent(str);
-        return str; // Já está codificado
-      } catch (e) {
-        return encodeURIComponent(str); // Precisa codificar
-      }
-    } catch (e) { 
-      return ''; 
+        str = decodeURIComponent(str);
+      } catch(e) {}
+      return encodeURIComponent(str);
+    } catch(e) {
+      console.error('Erro ao codificar:', e);
+      return str;
     }
   }
   
-  // Função para decodificar URLs de forma segura
-  function safeDecodeURIComponent(str) {
-    try { 
-      if (!str) return '';
-      return decodeURIComponent(str); 
-    } catch (e) { 
-      return str; 
+  // ============= COLETA DE DADOS =============
+  function initializeTracking() {
+    if (DEBUG_MODE) console.log('[TRINKS] Inicializando rastreamento...');
+    
+    // Captura referrer original (de onde o usuário veio para o blog)
+    if (!getCookie('trinks_referrer')) {
+      var referrer = document.referrer || 'direct';
+      setCookie('trinks_referrer', safeEncode(referrer));
+      if (DEBUG_MODE) console.log('[TRINKS] Referrer salvo:', referrer);
+    }
+    
+    // Captura URL de entrada no blog
+    if (!getCookie('trinks_landing_url')) {
+      var landingUrl = window.location.href;
+      setCookie('trinks_landing_url', safeEncode(landingUrl));
+      if (DEBUG_MODE) console.log('[TRINKS] Landing URL salva:', landingUrl);
+    }
+    
+    // Detecta dispositivo
+    if (!getCookie('trinks_device')) {
+      var device = (window.innerWidth < 768) ? 'mobile' : 'desktop';
+      setCookie('trinks_device', device);
+      if (DEBUG_MODE) console.log('[TRINKS] Dispositivo detectado:', device);
+    }
+    
+    // Primeira URL de entrada (histórico)
+    if (!getCookie('trinks_first_landing_url')) {
+      setCookie('trinks_first_landing_url', safeEncode(window.location.href));
+      setCookie('trinks_first_landing_datetime', new Date().toISOString());
     }
   }
   
-  // Inicializa cookies com dados reais do navegador
-  function initCookies() {
-    // Referrer - URL de origem
-    if (!getCookie('referrer')) {
-      var referrer = document.referrer || '';
-      setCookie('referrer', safeEncodeURIComponent(referrer));
+  // ============= CAPTURA DE CLIQUE =============
+  function captureClickData() {
+    // Salva dados do momento do clique
+    if (!getCookie('trinks_first_click_url')) {
+      setCookie('trinks_first_click_url', safeEncode(window.location.href));
+      setCookie('trinks_first_click_datetime', new Date().toISOString());
     }
     
-    // Landing URL - URL atual
-    if (!getCookie('landingUrl')) {
-      setCookie('landingUrl', safeEncodeURIComponent(window.location.href));
+    // Envia evento para GA4
+    if (window.dataLayer) {
+      window.dataLayer.push({
+        event: 'trinks_parametros_capturados',
+        event_category: 'engagement',
+        event_label: window.location.pathname,
+        // Parâmetros detalhados para GTM
+        referrer: getCookie('trinks_referrer'),
+        landing_url: getCookie('trinks_landing_url'),
+        device: getCookie('trinks_device'),
+        first_click_url: getCookie('trinks_first_click_url'),
+        first_click_datetime: getCookie('trinks_first_click_datetime'),
+        first_landing_url: getCookie('trinks_first_landing_url'),
+        first_landing_datetime: getCookie('trinks_first_landing_datetime'),
+        current_url: window.location.href,
+        user_agent: navigator.userAgent,
+        timestamp: new Date().toISOString()
+      });
+      
+      if (DEBUG_MODE) console.log('[TRINKS] Evento enviado para GTM');
     }
-    
-    // Device - Detecta dispositivo
-    if (!getCookie('device')) {
-      var device = window.innerWidth < 768 ? 'mobile' : 'desktop';
-      setCookie('device', device);
-    }
-    
-    // Primeira landing URL e data/hora
-    if (!getCookie('firstLandingUrl')) {
-      setCookie('firstLandingUrl', safeEncodeURIComponent(window.location.href));
-    }
-    if (!getCookie('firstLandingUrlDateTime')) {
-      setCookie('firstLandingUrlDateTime', new Date().toISOString());
-    }
-    
-    // Log para debug
-    console.log('Trinks Debug: Cookies inicializados:', {
-      referrer: getCookie('referrer'),
-      landingUrl: getCookie('landingUrl'),
-      device: getCookie('device'),
-      firstLandingUrl: getCookie('firstLandingUrl'),
-      firstLandingUrlDateTime: getCookie('firstLandingUrlDateTime')
-    });
   }
   
-  // Captura dados do primeiro clique e envia para GTM
-  function captureFirstClick() {
-    if (!getCookie('firstClickUrl')) {
-      setCookie('firstClickUrl', safeEncodeURIComponent(window.location.href));
-    }
-    if (!getCookie('firstClickUrlDateTime')) {
-      setCookie('firstClickUrlDateTime', new Date().toISOString());
-    }
-    
-    // Envia evento para GA4 via dataLayer com TODOS os parâmetros
-    window.dataLayer = window.dataLayer || [];
-    var eventData = {
-      event: 'parametros_blog',
-      event_category: 'engagement',
-      event_label: window.location.pathname,
-      // Parâmetros principais (decodificados para legibilidade)
-      referrer: safeDecodeURIComponent(getCookie('referrer') || ''),
-      landing_url: safeDecodeURIComponent(getCookie('landingUrl') || ''),
-      device: getCookie('device') || '',
-      first_click_url: safeDecodeURIComponent(getCookie('firstClickUrl') || ''),
-      first_click_datetime: getCookie('firstClickUrlDateTime') || '',
-      first_landing_url: safeDecodeURIComponent(getCookie('firstLandingUrl') || ''),
-      first_landing_datetime: getCookie('firstLandingUrlDateTime') || '',
-      // Parâmetros adicionais para debug
-      current_url: window.location.href,
-      user_agent: navigator.userAgent,
-      timestamp: new Date().toISOString()
-    };
-    
-    window.dataLayer.push(eventData);
-    
-    // Log para debug
-    console.log('Trinks Debug: Evento enviado para GTM:', eventData);
-    
-    // Aguarda um momento para garantir que o evento foi processado
-    setTimeout(function() {
-      console.log('Trinks Debug: Evento processado, redirecionando...');
-    }, 100);
-  }
-  
-  // Constrói a URL de redirecionamento com parâmetros
-  function urlBuilder() {
-    var baseUrl = 'https://www.trinks.com/programa-para-salao-de-beleza/cadastrar-meu-estabelecimento/dados-iniciais';
+  // ============= CONSTRUÇÃO DA URL COM PARÂMETROS =============
+  function buildUrlWithParams() {
     var params = [];
     
-    // Dados dos cookies (decodificados para evitar dupla codificação)
-    var paramData = {
-      'referrer': safeDecodeURIComponent(getCookie('referrer') || ''),
-      'landingUrl': safeDecodeURIComponent(getCookie('landingUrl') || ''),
-      'dispositivo': getCookie('device') || '',
-      'firstClickUrl': safeDecodeURIComponent(getCookie('firstClickUrl') || ''),
-      'firstClickUrlDateTime': getCookie('firstClickUrlDateTime') || '',
-      'firstLandingUrl': safeDecodeURIComponent(getCookie('firstLandingUrl') || ''),
-      'firstLandingUrlDateTime': getCookie('firstLandingUrlDateTime') || ''
+    // Coletar todos os parâmetros dos cookies
+    var paramMapping = {
+      'referrer': getCookie('trinks_referrer'),
+      'landingUrl': getCookie('trinks_landing_url'),
+      'dispositivo': getCookie('trinks_device'),
+      'firstClickUrl': getCookie('trinks_first_click_url'),
+      'firstClickUrlDateTime': getCookie('trinks_first_click_datetime'),
+      'firstLandingUrl': getCookie('trinks_first_landing_url'),
+      'firstLandingUrlDateTime': getCookie('trinks_first_landing_datetime')
     };
     
-    // Adiciona apenas parâmetros que têm valor
-    for (var key in paramData) {
-      if (paramData.hasOwnProperty(key) && paramData[key]) {
-        params.push(key + '=' + encodeURIComponent(paramData[key]));
+    // Construir string de parâmetros
+    for (var key in paramMapping) {
+      if (paramMapping[key]) {
+        // Decodificar o valor do cookie antes de adicionar à URL
+        var value = paramMapping[key];
+        try {
+          value = decodeURIComponent(value);
+        } catch(e) {}
+        
+        // Re-codificar para a URL
+        params.push(key + '=' + encodeURIComponent(value));
       }
     }
     
-    var finalUrl = baseUrl + '?' + params.join('&');
+    // Adicionar timestamp para evitar cache
+    params.push('t=' + Date.now());
     
-    // Log para debug
-    console.log('Trinks Debug: URL final construída:', finalUrl);
-    console.log('Trinks Debug: Parâmetros:', paramData);
+    var finalUrl = TARGET_URL + '?' + params.join('&');
+    
+    if (DEBUG_MODE) {
+      console.log('[TRINKS] URL final construída:', finalUrl);
+      console.log('[TRINKS] Parâmetros:', paramMapping);
+    }
     
     return finalUrl;
   }
   
-  // Função principal de interceptação e redirecionamento
-  function interceptAndRedirect() {
-    console.log('Trinks Debug: Iniciando interceptação...');
-    
-    // Captura dados do primeiro clique
-    captureFirstClick();
-    
-    // Aguarda um momento para garantir que o evento foi enviado
-    setTimeout(function() {
-      var finalUrl = urlBuilder();
-      
-      // Log final antes do redirecionamento
-      console.log('Trinks Debug: Redirecionando para:', finalUrl);
-      
-      // Redireciona para a URL final
-      window.location.href = finalUrl;
-    }, 200);
-  }
-  
-  // Configura interceptador de links com debug aprimorado
-  function setupLinkInterceptor() {
-    var targetUrlPart = 'trinks.com/programa-para-salao-de-beleza/cadastrar-meu-estabelecimento/dados-iniciais';
+  // ============= INTERCEPTADOR DE LINKS =============
+  function interceptLinks() {
+    // Variações possíveis da URL alvo
+    var urlPatterns = [
+      'trinks.com/programa-para-salao-de-beleza/cadastrar-meu-estabelecimento/dados-iniciais',
+      'trinks.com/programa-para-salao-de-beleza/cadastrar-meu-estabelecimento',
+      '/cadastrar-meu-estabelecimento/dados-iniciais'
+    ];
     
     document.addEventListener('click', function(e) {
+      // Encontrar o elemento <a> mais próximo
       var link = e.target.closest('a');
       
-      if (link && link.href) {
-        console.log('Trinks Debug: Link clicado:', link.href);
-        
-        if (link.href.includes(targetUrlPart)) {
-          console.log('Trinks Debug: Link interceptado! Executando redirecionamento...');
-          
-          e.preventDefault();
-          interceptAndRedirect();
-        } else {
-          console.log('Trinks Debug: Link não é alvo, navegação normal.');
+      if (!link || !link.href) return;
+      
+      // Verificar se o link corresponde ao padrão
+      var shouldIntercept = false;
+      for (var i = 0; i < urlPatterns.length; i++) {
+        if (link.href.indexOf(urlPatterns[i]) > -1) {
+          shouldIntercept = true;
+          break;
         }
       }
-    }, true);
+      
+      if (shouldIntercept) {
+        if (DEBUG_MODE) console.log('[TRINKS] Link interceptado!', link.href);
+        
+        // Prevenir navegação padrão
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Capturar dados do clique
+        captureClickData();
+        
+        // Construir URL com parâmetros
+        var urlComParametros = buildUrlWithParams();
+        
+        // Redirecionar
+        if (DEBUG_MODE) {
+          console.log('[TRINKS] Redirecionando para:', urlComParametros);
+          // Em modo debug, mostrar confirmação
+          if (confirm('MODO DEBUG\n\nRedirecionar para:\n' + urlComParametros + '\n\nConfirmar?')) {
+            window.location.href = urlComParametros;
+          }
+        } else {
+          // Em produção, redirecionar direto
+          window.location.href = urlComParametros;
+        }
+        
+        return false;
+      }
+    }, true); // true = captura na fase de bubbling
   }
   
-  // Inicialização
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
-      console.log('Trinks Debug: DOM carregado, inicializando...');
-      initCookies();
-      setupLinkInterceptor();
+  // ============= MONITOR DE CONTEÚDO DINÂMICO =============
+  function monitorDynamicContent() {
+    if (typeof MutationObserver === 'undefined') return;
+    
+    var observer = new MutationObserver(function(mutations) {
+      // Verificar se novos links foram adicionados
+      mutations.forEach(function(mutation) {
+        mutation.addedNodes.forEach(function(node) {
+          if (node.nodeType === 1) { // Element node
+            var links = node.querySelectorAll ? node.querySelectorAll('a') : [];
+            if (links.length > 0 && DEBUG_MODE) {
+              console.log('[TRINKS] Novos links detectados:', links.length);
+            }
+          }
+        });
+      });
     });
-  } else {
-    console.log('Trinks Debug: DOM já carregado, inicializando...');
-    initCookies();
-    setupLinkInterceptor();
+    
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
   }
   
-  // Expõe funções para uso externo
-  window.interceptAndRedirect = interceptAndRedirect;
-  window.initCookies = initCookies;
-  window.captureFirstClick = captureFirstClick;
-  window.urlBuilder = urlBuilder;
-  window.getCookie = getCookie;
-  window.setCookie = setCookie;
+  // ============= FUNÇÕES DE DEBUG =============
+  function debugInfo() {
+    console.log('========== TRINKS DEBUG ==========');
+    console.log('Cookies salvos:');
+    console.log('  referrer:', getCookie('trinks_referrer'));
+    console.log('  landingUrl:', getCookie('trinks_landing_url'));
+    console.log('  dispositivo:', getCookie('trinks_device'));
+    console.log('  firstClickUrl:', getCookie('trinks_first_click_url'));
+    console.log('  firstClickUrlDateTime:', getCookie('trinks_first_click_datetime'));
+    console.log('  firstLandingUrl:', getCookie('trinks_first_landing_url'));
+    console.log('  firstLandingUrlDateTime:', getCookie('trinks_first_landing_datetime'));
+    console.log('URL que seria gerada:', buildUrlWithParams());
+    console.log('===================================');
+  }
   
-  // Log de inicialização
-  console.log('Trinks Debug: Script carregado e funcionando');
-  console.log('Trinks Debug: Funções expostas:', Object.keys(window).filter(key => 
-    ['interceptAndRedirect', 'initCookies', 'captureFirstClick', 'urlBuilder', 'getCookie', 'setCookie'].includes(key)
-  ));
+  // ============= INICIALIZAÇÃO =============
+  function init() {
+    console.log('[TRINKS] Script carregado - Versão 2.0');
+    
+    // Inicializar rastreamento
+    initializeTracking();
+    
+    // Configurar interceptadores
+    interceptLinks();
+    
+    // Monitorar conteúdo dinâmico
+    monitorDynamicContent();
+    
+    // Expor funções globais para debug
+    window.trinksDebug = debugInfo;
+    window.trinksTestRedirect = function() {
+      captureClickData();
+      var url = buildUrlWithParams();
+      console.log('[TRINKS] URL de teste:', url);
+      if (confirm('Testar redirecionamento para:\n' + url)) {
+        window.location.href = url;
+      }
+    };
+    
+    // Expor funções para compatibilidade com página de teste
+    window.initCookies = initializeTracking;
+    window.captureFirstClick = captureClickData;
+    window.urlBuilder = buildUrlWithParams;
+    window.interceptAndRedirect = function() {
+      captureClickData();
+      var url = buildUrlWithParams();
+      if (DEBUG_MODE) {
+        if (confirm('Redirecionar para:\n' + url + '\n\nConfirmar?')) {
+          window.location.href = url;
+        }
+      } else {
+        window.location.href = url;
+      }
+    };
+    
+    if (DEBUG_MODE) {
+      console.log('[TRINKS] Modo DEBUG ativado');
+      console.log('[TRINKS] Digite "trinksDebug()" no console para ver os dados');
+      console.log('[TRINKS] Digite "trinksTestRedirect()" para testar o redirecionamento');
+      console.log('[TRINKS] Funções de teste disponíveis: initCookies(), captureFirstClick(), urlBuilder(), interceptAndRedirect()');
+    }
+  }
+  
+  // Executar quando o DOM estiver pronto
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 })();
 </script>
