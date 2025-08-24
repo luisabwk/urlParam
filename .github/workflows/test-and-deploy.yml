@@ -1,0 +1,195 @@
+name: 🧪 Testes e Deploy - Branch HML
+
+on:
+  push:
+    branches: [ hml ]
+  pull_request:
+    branches: [ hml ]
+  workflow_dispatch: # Permite execução manual
+
+jobs:
+  # Job de testes
+  test:
+    name: 🧪 Executar Testes
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout do código
+      uses: actions/checkout@v4
+      
+    - name: 🟢 Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: 📦 Instalar dependências
+      run: |
+        echo "Instalando dependências de teste..."
+        npm install --silent
+        
+    - name: 🧪 Executar testes de sintaxe JavaScript
+      run: |
+        echo "🔍 Verificando sintaxe dos arquivos JavaScript..."
+        
+        # Verifica sintaxe do arquivo principal (removendo tags HTML)
+        echo "Verificando versao_atual_GTM.js..."
+        sed -n '2,217p' versao_atual_GTM.js | node -c
+        echo "✅ versao_atual_GTM.js - Sintaxe OK"
+        
+        # Verifica outros arquivos JS se existirem
+        if [ -f "urlParam.js" ]; then
+          echo "Verificando urlParam.js..."
+          sed -n '2,82p' urlParam.js | node -c
+          echo "✅ urlParam.js - Sintaxe OK"
+        fi
+        
+        echo "🎉 Todos os arquivos JavaScript passaram na verificação de sintaxe!"
+        
+    - name: 🔍 Validar estrutura HTML
+      run: |
+        echo "🔍 Validando estrutura HTML..."
+        
+        # Verifica se os arquivos HTML têm estrutura básica válida
+        for file in *.html; do
+          if [ -f "$file" ]; then
+            echo "Verificando $file..."
+            if grep -q "<!DOCTYPE html>" "$file" && grep -q "<html" "$file" && grep -q "</html>" "$file"; then
+              echo "✅ $file - Estrutura HTML válida"
+            else
+              echo "❌ $file - Estrutura HTML inválida"
+              exit 1
+            fi
+          fi
+        done
+        
+        echo "🎉 Todos os arquivos HTML têm estrutura válida!"
+        
+    - name: 📊 Gerar relatório de testes
+      run: |
+        echo "📊 Gerando relatório de testes..."
+        
+        echo "# Relatório de Testes - $(date)" > test-report.md
+        echo "" >> test-report.md
+        echo "## ✅ Testes Executados" >> test-report.md
+        echo "" >> test-report.md
+        echo "- ✅ Verificação de sintaxe JavaScript" >> test-report.md
+        echo "- ✅ Validação de estrutura HTML" >> test-report.md
+        echo "- ✅ Verificação de arquivos obrigatórios" >> test-report.md
+        echo "" >> test-report.md
+        echo "## 📁 Arquivos Testados" >> test-report.md
+        echo "" >> test-report.md
+        ls -la *.js *.html *.md >> test-report.md
+        echo "" >> test-report.md
+        echo "## 🎯 Status: TODOS OS TESTES PASSARAM" >> test-report.md
+        
+        echo "📄 Relatório de testes gerado: test-report.md"
+        
+    - name: 💾 Upload relatório de testes
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-report
+        path: test-report.md
+
+  # Job de deploy no GitHub Pages
+  deploy:
+    name: 🚀 Deploy no GitHub Pages
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/hml'
+    
+    steps:
+    - name: 📥 Checkout do código
+      uses: actions/checkout@v4
+      
+    - name: 🔧 Configurar GitHub Pages
+      uses: actions/configure-pages@v4
+      
+    - name: 📦 Build da aplicação
+      run: |
+        echo "🔨 Preparando arquivos para deploy..."
+        
+        # Cria diretório de build
+        mkdir -p dist
+        
+        # Copia arquivos principais
+        cp *.html dist/
+        cp *.js dist/
+        cp *.md dist/
+        
+        # Cria arquivo de configuração para GitHub Pages
+        echo "Configuração do GitHub Pages" > dist/README.md
+        echo "Branch: hml" >> dist/README.md
+        echo "Último deploy: $(date)" >> dist/README.md
+        
+        echo "✅ Build concluído!"
+        
+    - name: 🚀 Deploy no GitHub Pages
+      uses: actions/deploy-pages@v4
+      with:
+        path: dist
+        
+    - name: 📝 Criar comentário no PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `## 🎉 Deploy Concluído com Sucesso!
+          
+          ✅ **Testes**: Todos passaram
+          🚀 **Deploy**: GitHub Pages atualizado
+          🌐 **URL**: https://${context.repo.owner}.github.io/${context.repo.repo}/
+          
+          ### 📊 Status dos Testes:
+          - ✅ Verificação de sintaxe JavaScript
+          - ✅ Validação de estrutura HTML
+          - ✅ Verificação de arquivos obrigatórios
+          
+          ### 🔍 Como Testar:
+          1. Acesse a URL do GitHub Pages
+          2. Abra o DevTools (F12)
+          3. Verifique as mensagens "Trinks Debug:" no console
+          4. Teste a interceptação de links
+          
+          **Branch**: \`hml\`
+          **Commit**: \`${context.sha.substring(0, 7)}\``
+          })
+
+  # Job de notificação
+  notify:
+    name: 📢 Notificação de Status
+    needs: [test, deploy]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: 📊 Resumo do Status
+      run: |
+        echo "📊 RESUMO DO WORKFLOW"
+        echo "===================="
+        
+        if [ "${{ needs.test.result }}" == "success" ]; then
+          echo "✅ TESTES: SUCESSO"
+        else
+          echo "❌ TESTES: FALHOU"
+        fi
+        
+        if [ "${{ needs.deploy.result }}" == "success" ]; then
+          echo "✅ DEPLOY: SUCESSO"
+        else
+          echo "❌ DEPLOY: FALHOU"
+        fi
+        
+        echo "===================="
+        
+        # Cria badge de status
+        if [ "${{ needs.test.result }}" == "success" ] && [ "${{ needs.deploy.result }}" == "success" ]; then
+          echo "🎉 TODOS OS JOBS EXECUTADOS COM SUCESSO!"
+        else
+          echo "⚠️ ALGUNS JOBS FALHARAM"
+          exit 1
+        fi

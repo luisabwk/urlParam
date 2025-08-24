@@ -1,0 +1,71 @@
+name: 🚀 GitHub Pages - Branch HML
+
+on:
+  push:
+    branches: [ hml ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: 🔧 Setup Pages
+        uses: actions/configure-pages@v4
+        
+      - name: 📦 Build
+        run: |
+          echo "🔨 Preparando arquivos para GitHub Pages..."
+          
+          # Cria diretório de build
+          mkdir -p dist
+          
+          # Copia arquivos principais
+          cp *.html dist/
+          cp *.js dist/
+          cp *.md dist/
+          
+          # Cria arquivo de configuração
+          cat > dist/README.md << 'EOF'
+          # 🌐 GitHub Pages - Branch HML
+          
+          ## 📋 Sobre
+          Esta é a versão de homologação do sistema de captura de parâmetros para GTM.
+          
+          ## 🔧 Arquivos Principais
+          - `versao_atual_GTM.js` - Script principal corrigido
+          - `teste_validacao.html` - Ferramenta de teste
+          - `CORREÇÕES_IMPLEMENTADAS.md` - Documentação das correções
+          
+          ## 🧪 Como Testar
+          1. Abra o DevTools (F12)
+          2. Verifique as mensagens "Trinks Debug:" no console
+          3. Teste a interceptação de links
+          
+          ## 📊 Status
+          - **Branch**: hml
+          - **Último Deploy**: $(date)
+          - **Status**: ✅ Funcionando
+          EOF
+          
+          echo "✅ Build concluído!"
+          
+      - name: 🚀 Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

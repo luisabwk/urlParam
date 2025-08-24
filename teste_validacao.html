@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Teste de Validação - Correções Implementadas</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+    .success { background-color: #d4edda; border-color: #c3e6cb; }
+    .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+    .info { background-color: #d1ecf1; border-color: #bee5eb; }
+    .code { background: #f8f9fa; padding: 10px; border-radius: 3px; font-family: monospace; }
+    button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    .log { background: #000; color: #0f0; padding: 10px; border-radius: 3px; font-family: monospace; max-height: 300px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Teste de Validação - Correções Implementadas</h1>
+    
+    <div class="section info">
+      <h3>📋 Objetivo do Teste</h3>
+      <p>Este arquivo testa se as correções implementadas no <code>versao_atual_GTM.js</code> estão funcionando corretamente.</p>
+    </div>
+
+    <div class="section">
+      <h3>🔧 Funcionalidades Testadas</h3>
+      <ul>
+        <li>✅ Captura de cookies sem dupla codificação</li>
+        <li>✅ Envio de eventos para GTM via dataLayer</li>
+        <li>✅ Construção de URL com parâmetros</li>
+        <li>✅ Logs de debug em cada etapa</li>
+        <li>✅ Interceptação de links</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h3>🧪 Testes Disponíveis</h3>
+      <button onclick="testarCookies()">Testar Captura de Cookies</button>
+      <button onclick="testarDataLayer()">Testar Envio para GTM</button>
+      <button onclick="testarURLBuilder()">Testar Construtor de URL</button>
+      <button onclick="testarInterceptacao()">Testar Interceptação</button>
+      <button onclick="limparLogs()">Limpar Logs</button>
+    </div>
+
+    <div class="section">
+      <h3>📊 Status dos Cookies</h3>
+      <div id="cookieStatus"></div>
+    </div>
+
+    <div class="section">
+      <h3>🔗 URL Gerada</h3>
+      <div id="urlGerada" class="code"></div>
+    </div>
+
+    <div class="section">
+      <h3>📝 Logs de Debug</h3>
+      <div id="logs" class="log"></div>
+    </div>
+
+    <div class="section warning">
+      <h3>⚠️ Como Usar</h3>
+      <ol>
+        <li>Abra o DevTools (F12) e vá para a aba Console</li>
+        <li>Clique nos botões de teste acima</li>
+        <li>Verifique se as mensagens "Trinks Debug:" aparecem no console</li>
+        <li>Monitore os logs na seção abaixo</li>
+      </ol>
+    </div>
+
+    <div class="section success">
+      <h3>✅ Resultado Esperado</h3>
+      <p>Após executar os testes, você deve ver:</p>
+      <ul>
+        <li>Cookies sendo criados corretamente</li>
+        <li>Eventos sendo enviados para o dataLayer</li>
+        <li>URLs sendo construídas com parâmetros</li>
+        <li>Logs detalhados em cada etapa</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // Função para adicionar logs
+    function adicionarLog(mensagem, tipo = 'info') {
+      const logsDiv = document.getElementById('logs');
+      const timestamp = new Date().toLocaleTimeString();
+      const logEntry = document.createElement('div');
+      logEntry.innerHTML = `[${timestamp}] ${mensagem}`;
+      logsDiv.appendChild(logEntry);
+      logsDiv.scrollTop = logsDiv.scrollHeight;
+    }
+
+    // Função para limpar logs
+    function limparLogs() {
+      document.getElementById('logs').innerHTML = '';
+      adicionarLog('Logs limpos');
+    }
+
+    // Função para testar captura de cookies
+    function testarCookies() {
+      adicionarLog('🧪 Testando captura de cookies...');
+      
+      // Simula a função initCookies
+      if (typeof window.initCookies === 'function') {
+        window.initCookies();
+        adicionarLog('✅ Função initCookies executada');
+      } else {
+        adicionarLog('❌ Função initCookies não encontrada');
+      }
+      
+      atualizarStatusCookies();
+    }
+
+    // Função para testar dataLayer
+    function testarDataLayer() {
+      adicionarLog('🧪 Testando envio para dataLayer...');
+      
+      if (typeof window.captureFirstClick === 'function') {
+        window.captureFirstClick();
+        adicionarLog('✅ Função captureFirstClick executada');
+        
+        // Verifica se o evento foi enviado
+        if (window.dataLayer && window.dataLayer.length > 0) {
+          const ultimoEvento = window.dataLayer[window.dataLayer.length - 1];
+          adicionarLog(`✅ Evento enviado para dataLayer: ${ultimoEvento.event}`);
+        } else {
+          adicionarLog('❌ Nenhum evento encontrado no dataLayer');
+        }
+      } else {
+        adicionarLog('❌ Função captureFirstClick não encontrada');
+      }
+    }
+
+    // Função para testar construtor de URL
+    function testarURLBuilder() {
+      adicionarLog('🧪 Testando construtor de URL...');
+      
+      if (typeof window.urlBuilder === 'function') {
+        const url = window.urlBuilder();
+        document.getElementById('urlGerada').textContent = url;
+        adicionarLog(`✅ URL gerada: ${url}`);
+      } else {
+        adicionarLog('❌ Função urlBuilder não encontrada');
+      }
+    }
+
+    // Função para testar interceptação
+    function testarInterceptacao() {
+      adicionarLog('🧪 Testando interceptação...');
+      
+      if (typeof window.interceptAndRedirect === 'function') {
+        adicionarLog('⚠️ Executando interceptAndRedirect (pode redirecionar)...');
+        // Comentado para evitar redirecionamento durante teste
+        // window.interceptAndRedirect();
+        adicionarLog('✅ Função interceptAndRedirect disponível');
+      } else {
+        adicionarLog('❌ Função interceptAndRedirect não encontrada');
+      }
+    }
+
+    // Função para atualizar status dos cookies
+    function atualizarStatusCookies() {
+      const cookies = ['referrer', 'landingUrl', 'device', 'firstLandingUrl', 'firstLandingUrlDateTime', 'firstClickUrl', 'firstClickUrlDateTime'];
+      const statusDiv = document.getElementById('cookieStatus');
+      
+      let html = '<table style="width:100%; border-collapse: collapse;">';
+      html += '<tr><th>Cookie</th><th>Valor</th><th>Status</th></tr>';
+      
+      cookies.forEach(cookie => {
+        const valor = getCookie(cookie);
+        const status = valor ? '✅ Definido' : '❌ Não definido';
+        const valorExibido = valor ? (valor.length > 50 ? valor.substring(0, 50) + '...' : valor) : 'N/A';
+        
+        html += `<tr style="border-bottom: 1px solid #ddd;">`;
+        html += `<td style="padding: 5px;"><strong>${cookie}</strong></td>`;
+        html += `<td style="padding: 5px; font-family: monospace;">${valorExibido}</td>`;
+        html += `<td style="padding: 5px;">${status}</td>`;
+        html += `</tr>`;
+      });
+      
+      html += '</table>';
+      statusDiv.innerHTML = html;
+    }
+
+    // Função para obter cookie (simulada)
+    function getCookie(name) {
+      const cookies = document.cookie.split(';');
+      for (let c of cookies) {
+        c = c.trim();
+        if (c.indexOf(name + '=') === 0) {
+          return c.substring(name.length + 1);
+        }
+      }
+      return null;
+    }
+
+    // Inicialização
+    document.addEventListener('DOMContentLoaded', function() {
+      adicionarLog('🚀 Página carregada, iniciando testes...');
+      atualizarStatusCookies();
+      
+      // Verifica se o script principal está carregado
+      setTimeout(() => {
+        if (typeof window.interceptAndRedirect === 'function') {
+          adicionarLog('✅ Script principal carregado com sucesso');
+        } else {
+          adicionarLog('❌ Script principal não encontrado');
+        }
+      }, 1000);
+    });
+
+    // Intercepta logs do console
+    const originalLog = console.log;
+    console.log = function(...args) {
+      originalLog.apply(console, args);
+      
+      // Filtra apenas logs do Trinks
+      const mensagem = args.join(' ');
+      if (mensagem.includes('Trinks Debug:')) {
+        adicionarLog(`🔍 ${mensagem}`);
+      }
+    };
+  </script>
+</body>
+</html>

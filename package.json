@@ -1,0 +1,31 @@
+{
+  "name": "urlparam-gtm",
+  "version": "1.0.0",
+  "description": "Sistema de captura de parâmetros para Google Tag Manager",
+  "main": "versao_atual_GTM.js",
+  "scripts": {
+    "test": "echo '🧪 Executando testes...' && node -c versao_atual_GTM.js && echo '✅ Testes passaram!'",
+    "test:syntax": "node -c versao_atual_GTM.js",
+    "test:html": "echo '🔍 Verificando HTML...' && for file in *.html; do if [ -f \"$file\" ]; then echo \"Verificando $file...\"; if grep -q '<!DOCTYPE html>' \"$file\" && grep -q '<html' \"$file\" && grep -q '</html>' \"$file\"; then echo \"✅ $file - OK\"; else echo \"❌ $file - Inválido\"; exit 1; fi; fi; done",
+    "build": "echo '🔨 Build iniciado...' && mkdir -p dist && cp *.html *.js *.md dist/ && echo '✅ Build concluído!'",
+    "deploy:preview": "npm run build && echo '🚀 Deploy preview pronto em ./dist/'"
+  },
+  "keywords": [
+    "gtm",
+    "google-tag-manager",
+    "url-parameters",
+    "tracking",
+    "analytics"
+  ],
+  "author": "Cliente Trinks",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/luisabarwinski/urlParam.git"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {},
+  "dependencies": {}
+}

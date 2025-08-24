@@ -1,0 +1,30 @@
+name: 🚀 GitHub Pages Simples - HML
+
+on:
+  push:
+    branches: [ hml ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        
+      - name: 🔧 Setup Pages
+        uses: actions/configure-pages@v4
+        
+      - name: 📦 Build
+        run: |
+          echo "🔨 Preparando arquivos..."
+          mkdir -p dist
+          cp *.html *.js *.md dist/
+          echo "✅ Build concluído!"
+          
+      - name: 🚀 Deploy
+        uses: actions/deploy-pages@v4
