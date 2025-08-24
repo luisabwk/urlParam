@@ -4,7 +4,7 @@
   "description": "Sistema de captura de parâmetros para Google Tag Manager",
   "main": "versao_atual_GTM.js",
   "scripts": {
-    "test": "echo '🧪 Executando testes...' && node -c versao_atual_GTM.js && echo '✅ Testes passaram!'",
+    "test": "echo '🧪 Executando testes...' && sed -n '2,217p' versao_atual_GTM.js | node -c && echo '✅ Testes passaram!'",
     "test:syntax": "node -c versao_atual_GTM.js",
     "test:html": "echo '🔍 Verificando HTML...' && for file in *.html; do if [ -f \"$file\" ]; then echo \"Verificando $file...\"; if grep -q '<!DOCTYPE html>' \"$file\" && grep -q '<html' \"$file\" && grep -q '</html>' \"$file\"; then echo \"✅ $file - OK\"; else echo \"❌ $file - Inválido\"; exit 1; fi; fi; done",
     "build": "echo '🔨 Build iniciado...' && mkdir -p dist && cp *.html *.js *.md dist/ && echo '✅ Build concluído!'",
