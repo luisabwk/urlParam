@@ -51,7 +51,7 @@
 
   // Função para montar a URL de redirecionamento com os parâmetros obtidos dos cookies
   function urlBuilder() {
-    const baseUrl = 'Sua URL aqui'; // Cole sua URL aqui
+    const baseUrl = 'https://www.trinks.com/programa-para-salao-de-beleza/cadastrar-meu-estabelecimento/dados-iniciais';
     const params = new URLSearchParams({
       referrer: getCookie('referrer') || '',
       landingUrl: getCookie('landingUrl') || '',
