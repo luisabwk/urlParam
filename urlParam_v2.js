@@ -25,19 +25,13 @@
   function maybeDecodeURIComponent(str) {
     if (!str) return '';
     try {
-      // se decodificar muda o valor, estava encodado
       var dec = decodeURIComponent(str);
       if (dec !== str) return dec;
-      // alguns encoders usam '+' como espaço
       if (str.indexOf('+') !== -1 && str.indexOf('%20') === -1) {
-        try { 
-          var decPlus = decodeURIComponent(str.replace(/\+/g, '%20'));
-          return decPlus;
-        } catch (e2) {}
+        try { return decodeURIComponent(str.replace(/\+/g, '%20')); } catch (e2) {}
       }
       return str;
     } catch (e) {
-      // se tiver %xx quebrado, mantém cru
       return str;
     }
   }
@@ -151,23 +145,24 @@
     }, true);
   }
 
-  // ===== Migração (NORMALIZA e REGRAVA sempre que encontrar traços de encode) =====
+  // ===== Migração (NORMALIZA E REGRAVA também as DATAS) =====
   function migrateDecodingIfNeeded() {
-    ['referrer','landingUrl','device','firstLandingUrl','firstClickUrl'].forEach(function(k){
-      var raw = getCookie(k);
-      if (!raw) return;
-      var looksEncoded = /%[0-9A-Fa-f]{2}/.test(raw) || raw.indexOf('+') !== -1;
-      var dec = maybeDecodeURIComponent(raw);
-      if (looksEncoded || dec !== raw) {
-        setCookie(k, dec);
-        console.log('[cookies] normalizado:', k, '->', dec);
-      }
-    });
+    ['referrer','landingUrl','device','firstLandingUrl','firstClickUrl','firstClickUrlDateTime','firstLandingUrlDateTime']
+      .forEach(function(k){
+        var raw = getCookie(k);
+        if (!raw) return;
+        var looksEncoded = /%[0-9A-Fa-f]{2}/.test(raw) || raw.indexOf('+') !== -1;
+        var dec = maybeDecodeURIComponent(raw);
+        if (looksEncoded || dec !== raw) {
+          setCookie(k, dec);
+          console.log('[cookies] normalizado:', k, '->', dec);
+        }
+      });
   }
 
   // ===== Boot =====
   function boot() {
-    migrateDecodingIfNeeded(); // limpa qualquer legado encodado (inclui firstClickUrl)
+    migrateDecodingIfNeeded(); // limpa qualquer legado encodado (inclui datas)
     initCookies();             // garante presença dos básicos
     setupLinkInterceptor();
     renderDebugUrl();          // popula #parameters
