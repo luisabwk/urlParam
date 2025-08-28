@@ -1,11 +1,11 @@
-<script>
+// urlParam_v2.js
 (function(){
   // ===== Helpers =====
   function setCookie(name, value, days) {
     if (typeof days === 'undefined') days = 30;
     var expires = new Date();
     expires.setDate(expires.getDate() + days);
-    // Mantém legível: não usa encodeURIComponent; só sanitiza ; e quebras de linha
+    // Grava legível: sem URL-encode; sanitiza delimitadores
     var sanitized = String(value || '').replace(/[\r\n;]/g, ' ').trim();
     document.cookie = name + '=' + sanitized + ';expires=' + expires.toUTCString() + ';path=/;SameSite=Lax';
   }
@@ -19,12 +19,11 @@
     }
     return null;
   }
-  // Detecta e decodifica valores que vieram URL-encodados (%XX); mantém legível
+  // Detecta e decodifica valores URL-encodados (%XX); mantém legível
   function maybeDecodeURIComponent(str) {
     if (!str) return '';
     try {
       var decoded = decodeURIComponent(str);
-      // Se re-encodar volta igual, então estava encodado e podemos usar decodificado
       return encodeURIComponent(decoded) === str ? decoded : str;
     } catch (e) { return str; }
   }
@@ -32,7 +31,7 @@
     return maybeDecodeURIComponent(getCookie(name) || '');
   }
 
-  // ===== Cookie init (GRAVA SEM URL-ENCODE NOS COOKIES) =====
+  // ===== Cookie init (GRAVA SEM URL-ENCODE) =====
   function initCookies() {
     if (!getCookie('referrer')) setCookie('referrer', document.referrer || '');
     if (!getCookie('landingUrl')) setCookie('landingUrl', window.location.href);
@@ -49,7 +48,7 @@
     if (!getCookie('firstClickUrl')) setCookie('firstClickUrl', window.location.href);
     if (!getCookie('firstClickUrlDateTime')) setCookie('firstClickUrlDateTime', new Date().toISOString());
 
-    // Envia evento pro GA4 via dataLayer (com valores legíveis)
+    // Evento GA4 (valores legíveis)
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({
       event: 'parametros_blog',
@@ -65,7 +64,7 @@
     });
   }
 
-  // ===== URL builder (usa URLSearchParams -> UM ÚNICO encode na URL final) =====
+  // ===== URL builder (URLSearchParams faz o ÚNICO encode na URL final) =====
   function urlBuilder() {
     var baseUrl = 'https://www.trinks.com/programa-para-salao-de-beleza/cadastrar-meu-estabelecimento/dados-iniciais';
     var params = new URLSearchParams({
@@ -83,7 +82,41 @@
   function interceptAndRedirect() {
     captureFirstClick();
     var finalUrl = urlBuilder();
+    renderDebugUrl(finalUrl); // mostra antes de redirecionar (útil p/ debug rápido)
     window.location.href = finalUrl;
+  }
+
+  // ===== Debug visual =====
+  function renderDebugUrl(urlStr) {
+    var el = document.getElementById('parameters');
+    if (!el) return;
+    var final = urlStr || urlBuilder();
+
+    // Render básico com link clicável
+    el.innerHTML = '';
+    var p = document.createElement('p');
+    p.textContent = 'URL de redirecionamento:';
+    var a = document.createElement('a');
+    a.href = final;
+    a.textContent = final;
+    a.rel = 'noopener noreferrer';
+    a.target = '_blank';
+    el.appendChild(p);
+    el.appendChild(a);
+
+    // Opcional: também mostrar os valores crús (sem encode) para conferência
+    var pre = document.createElement('pre');
+    pre.style.marginTop = '10px';
+    pre.textContent = JSON.stringify({
+      referrer: readCookieDecoded('referrer'),
+      landingUrl: readCookieDecoded('landingUrl'),
+      dispositivo: readCookieDecoded('device'),
+      firstClickUrl: readCookieDecoded('firstClickUrl'),
+      firstClickUrlDateTime: getCookie('firstClickUrlDateTime') || '',
+      firstLandingUrl: readCookieDecoded('firstLandingUrl'),
+      firstLandingUrlDateTime: getCookie('firstLandingUrlDateTime') || ''
+    }, null, 2);
+    el.appendChild(pre);
   }
 
   // ===== Link Interceptor (debug) =====
@@ -106,26 +139,27 @@
   }
 
   // ===== Boot =====
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
-      // Migração: se cookies antigos estiverem URL-encodados, regrava decodificados
-      ['referrer','landingUrl','device','firstLandingUrl','firstClickUrl'].forEach(function(k){
-        var v = readCookieDecoded(k);
-        if (v && v !== getCookie(k)) setCookie(k, v);
-      });
-      initCookies();
-      setupLinkInterceptor();
-    });
-  } else {
+  function migrateDecodingIfNeeded() {
     ['referrer','landingUrl','device','firstLandingUrl','firstClickUrl'].forEach(function(k){
       var v = readCookieDecoded(k);
       if (v && v !== getCookie(k)) setCookie(k, v);
     });
-    initCookies();
-    setupLinkInterceptor();
   }
 
-  // Expor util p/ testes
+  function boot() {
+    migrateDecodingIfNeeded();
+    initCookies();
+    setupLinkInterceptor();
+    renderDebugUrl(); // popula #parameters automaticamente
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+
+  // Expor utils p/ testes
   window.interceptAndRedirect = interceptAndRedirect;
+  window.__urlParamDebug__ = { urlBuilder, renderDebugUrl };
 })();
-</script>
