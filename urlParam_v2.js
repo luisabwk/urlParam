@@ -5,7 +5,9 @@
     if (typeof days === 'undefined') days = 30;
     var expires = new Date();
     expires.setDate(expires.getDate() + days);
-    document.cookie = name + '=' + value + ';expires=' + expires.toUTCString() + ';path=/';
+    // Mantém legível: não usa encodeURIComponent; só sanitiza ; e quebras de linha
+    var sanitized = String(value || '').replace(/[\r\n;]/g, ' ').trim();
+    document.cookie = name + '=' + sanitized + ';expires=' + expires.toUTCString() + ';path=/;SameSite=Lax';
   }
   function getCookie(name) {
     var cookies = document.cookie.split(';');
@@ -17,56 +19,62 @@
     }
     return null;
   }
-  function safeEncodeURIComponent(str) {
-    try { return encodeURIComponent(str || ''); } catch (e) { return ''; }
+  // Detecta e decodifica valores que vieram URL-encodados (%XX); mantém legível
+  function maybeDecodeURIComponent(str) {
+    if (!str) return '';
+    try {
+      var decoded = decodeURIComponent(str);
+      // Se re-encodar volta igual, então estava encodado e podemos usar decodificado
+      return encodeURIComponent(decoded) === str ? decoded : str;
+    } catch (e) { return str; }
   }
-  function safeDecodeURIComponent(str) {
-    try { return decodeURIComponent(str || ''); } catch (e) { return str || ''; }
+  function readCookieDecoded(name) {
+    return maybeDecodeURIComponent(getCookie(name) || '');
   }
 
-  // ===== Cookie init (stores ENCODED values to be URL-safe in storage) =====
+  // ===== Cookie init (GRAVA SEM URL-ENCODE NOS COOKIES) =====
   function initCookies() {
-    if (!getCookie('referrer')) setCookie('referrer', safeEncodeURIComponent(document.referrer || ''));
-    if (!getCookie('landingUrl')) setCookie('landingUrl', safeEncodeURIComponent(window.location.href));
+    if (!getCookie('referrer')) setCookie('referrer', document.referrer || '');
+    if (!getCookie('landingUrl')) setCookie('landingUrl', window.location.href);
     if (!getCookie('device')) {
       var device = window.innerWidth < 768 ? 'mobile' : 'desktop';
-      setCookie('device', safeEncodeURIComponent(device));
+      setCookie('device', device);
     }
-    if (!getCookie('firstLandingUrl')) setCookie('firstLandingUrl', safeEncodeURIComponent(window.location.href));
+    if (!getCookie('firstLandingUrl')) setCookie('firstLandingUrl', window.location.href);
     if (!getCookie('firstLandingUrlDateTime')) setCookie('firstLandingUrlDateTime', new Date().toISOString());
   }
 
-  // ===== First Click capture (pushes DECODED values to GA4 and cookies if missing) =====
+  // ===== First Click capture =====
   function captureFirstClick() {
-    if (!getCookie('firstClickUrl')) setCookie('firstClickUrl', safeEncodeURIComponent(window.location.href));
+    if (!getCookie('firstClickUrl')) setCookie('firstClickUrl', window.location.href);
     if (!getCookie('firstClickUrlDateTime')) setCookie('firstClickUrlDateTime', new Date().toISOString());
 
-    // Envia evento pro GA4 via dataLayer (com valores decodificados p/ leitura humana)
+    // Envia evento pro GA4 via dataLayer (com valores legíveis)
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({
       event: 'parametros_blog',
       event_category: 'engagement',
       event_label: window.location.pathname,
-      referrer:               safeDecodeURIComponent(getCookie('referrer') || ''),
-      landing_url:            safeDecodeURIComponent(getCookie('landingUrl') || ''),
-      device:                 safeDecodeURIComponent(getCookie('device') || ''),
-      first_click_url:        safeDecodeURIComponent(getCookie('firstClickUrl') || ''),
+      referrer:               readCookieDecoded('referrer'),
+      landing_url:            readCookieDecoded('landingUrl'),
+      device:                 readCookieDecoded('device'),
+      first_click_url:        readCookieDecoded('firstClickUrl'),
       first_click_datetime:   getCookie('firstClickUrlDateTime') || '',
-      first_landing_url:      safeDecodeURIComponent(getCookie('firstLandingUrl') || ''),
+      first_landing_url:      readCookieDecoded('firstLandingUrl'),
       first_landing_datetime: getCookie('firstLandingUrlDateTime') || ''
     });
   }
 
-  // ===== URL builder (DECODE cookies -> URLSearchParams does SINGLE encoding) =====
+  // ===== URL builder (usa URLSearchParams -> UM ÚNICO encode na URL final) =====
   function urlBuilder() {
     var baseUrl = 'https://www.trinks.com/programa-para-salao-de-beleza/cadastrar-meu-estabelecimento/dados-iniciais';
     var params = new URLSearchParams({
-      referrer:               safeDecodeURIComponent(getCookie('referrer') || ''),
-      landingUrl:             safeDecodeURIComponent(getCookie('landingUrl') || ''),
-      dispositivo:            safeDecodeURIComponent(getCookie('device') || ''),
-      firstClickUrl:          safeDecodeURIComponent(getCookie('firstClickUrl') || ''),
+      referrer:               readCookieDecoded('referrer'),
+      landingUrl:             readCookieDecoded('landingUrl'),
+      dispositivo:            readCookieDecoded('device'),
+      firstClickUrl:          readCookieDecoded('firstClickUrl'),
       firstClickUrlDateTime:  getCookie('firstClickUrlDateTime') || '',
-      firstLandingUrl:        safeDecodeURIComponent(getCookie('firstLandingUrl') || ''),
+      firstLandingUrl:        readCookieDecoded('firstLandingUrl'),
       firstLandingUrlDateTime:getCookie('firstLandingUrlDateTime') || ''
     });
     return baseUrl + '?' + params.toString();
@@ -100,10 +108,19 @@
   // ===== Boot =====
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
+      // Migração: se cookies antigos estiverem URL-encodados, regrava decodificados
+      ['referrer','landingUrl','device','firstLandingUrl','firstClickUrl'].forEach(function(k){
+        var v = readCookieDecoded(k);
+        if (v && v !== getCookie(k)) setCookie(k, v);
+      });
       initCookies();
       setupLinkInterceptor();
     });
   } else {
+    ['referrer','landingUrl','device','firstLandingUrl','firstClickUrl'].forEach(function(k){
+      var v = readCookieDecoded(k);
+      if (v && v !== getCookie(k)) setCookie(k, v);
+    });
     initCookies();
     setupLinkInterceptor();
   }
