@@ -9,6 +9,7 @@
     var sanitized = String(value || '').replace(/[\r\n;]/g, ' ').trim();
     document.cookie = name + '=' + sanitized + ';expires=' + expires.toUTCString() + ';path=/;SameSite=Lax';
   }
+
   function getCookie(name) {
     var cookies = document.cookie.split(';');
     for (var i = 0; i < cookies.length; i++) {
@@ -19,14 +20,28 @@
     }
     return null;
   }
-  // Detecta e decodifica valores URL-encodados (%XX); mantém legível
+
+  // Detecta e decodifica valores URL-encodados (%XX) e também caso de '+'
   function maybeDecodeURIComponent(str) {
     if (!str) return '';
     try {
-      var decoded = decodeURIComponent(str);
-      return encodeURIComponent(decoded) === str ? decoded : str;
-    } catch (e) { return str; }
+      // se decodificar muda o valor, estava encodado
+      var dec = decodeURIComponent(str);
+      if (dec !== str) return dec;
+      // alguns encoders usam '+' como espaço
+      if (str.indexOf('+') !== -1 && str.indexOf('%20') === -1) {
+        try { 
+          var decPlus = decodeURIComponent(str.replace(/\+/g, '%20'));
+          return decPlus;
+        } catch (e2) {}
+      }
+      return str;
+    } catch (e) {
+      // se tiver %xx quebrado, mantém cru
+      return str;
+    }
   }
+
   function readCookieDecoded(name) {
     return maybeDecodeURIComponent(getCookie(name) || '');
   }
@@ -82,7 +97,7 @@
   function interceptAndRedirect() {
     captureFirstClick();
     var finalUrl = urlBuilder();
-    renderDebugUrl(finalUrl); // mostra antes de redirecionar (útil p/ debug rápido)
+    renderDebugUrl(finalUrl); // mostra antes de redirecionar (debug)
     window.location.href = finalUrl;
   }
 
@@ -92,7 +107,6 @@
     if (!el) return;
     var final = urlStr || urlBuilder();
 
-    // Render básico com link clicável
     el.innerHTML = '';
     var p = document.createElement('p');
     p.textContent = 'URL de redirecionamento:';
@@ -104,7 +118,6 @@
     el.appendChild(p);
     el.appendChild(a);
 
-    // Opcional: também mostrar os valores crús (sem encode) para conferência
     var pre = document.createElement('pre');
     pre.style.marginTop = '10px';
     pre.textContent = JSON.stringify({
@@ -138,19 +151,26 @@
     }, true);
   }
 
-  // ===== Boot =====
+  // ===== Migração (NORMALIZA e REGRAVA sempre que encontrar traços de encode) =====
   function migrateDecodingIfNeeded() {
     ['referrer','landingUrl','device','firstLandingUrl','firstClickUrl'].forEach(function(k){
-      var v = readCookieDecoded(k);
-      if (v && v !== getCookie(k)) setCookie(k, v);
+      var raw = getCookie(k);
+      if (!raw) return;
+      var looksEncoded = /%[0-9A-Fa-f]{2}/.test(raw) || raw.indexOf('+') !== -1;
+      var dec = maybeDecodeURIComponent(raw);
+      if (looksEncoded || dec !== raw) {
+        setCookie(k, dec);
+        console.log('[cookies] normalizado:', k, '->', dec);
+      }
     });
   }
 
+  // ===== Boot =====
   function boot() {
-    migrateDecodingIfNeeded();
-    initCookies();
+    migrateDecodingIfNeeded(); // limpa qualquer legado encodado (inclui firstClickUrl)
+    initCookies();             // garante presença dos básicos
     setupLinkInterceptor();
-    renderDebugUrl(); // popula #parameters automaticamente
+    renderDebugUrl();          // popula #parameters
   }
 
   if (document.readyState === 'loading') {
