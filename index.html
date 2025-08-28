@@ -4,102 +4,120 @@
   <meta charset="UTF-8">
   <title>Teste de Redirecionamento - Dados do Navegador</title>
   <script>
-    // Funções para manipular cookies
-    function setCookie(name, value, days = 30) {
-      const expires = new Date();
-      expires.setDate(expires.getDate() + days);
-      document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/`;
+(function(){
+  // ===== Helpers =====
+  function setCookie(name, value, days) {
+    if (typeof days === 'undefined') days = 30;
+    var expires = new Date();
+    expires.setDate(expires.getDate() + days);
+    document.cookie = name + '=' + value + ';expires=' + expires.toUTCString() + ';path=/';
+  }
+  function getCookie(name) {
+    var cookies = document.cookie.split(';');
+    for (var i = 0; i < cookies.length; i++) {
+      var c = cookies[i].trim();
+      if (c.indexOf(name + '=') === 0) {
+        return c.substring(name.length + 1);
+      }
     }
+    return null;
+  }
+  function safeEncodeURIComponent(str) {
+    try { return encodeURIComponent(str || ''); } catch (e) { return ''; }
+  }
+  function safeDecodeURIComponent(str) {
+    try { return decodeURIComponent(str || ''); } catch (e) { return str || ''; }
+  }
 
-    function getCookie(name) {
-      const cookies = document.cookie.split(';');
-      for (let c of cookies) {
-        c = c.trim();
-        if (c.indexOf(name + '=') === 0) {
-          return c.substring(name.length + 1);
+  // ===== Cookie init (stores ENCODED values to be URL-safe in storage) =====
+  function initCookies() {
+    if (!getCookie('referrer')) setCookie('referrer', safeEncodeURIComponent(document.referrer || ''));
+    if (!getCookie('landingUrl')) setCookie('landingUrl', safeEncodeURIComponent(window.location.href));
+    if (!getCookie('device')) {
+      var device = window.innerWidth < 768 ? 'mobile' : 'desktop';
+      setCookie('device', safeEncodeURIComponent(device));
+    }
+    if (!getCookie('firstLandingUrl')) setCookie('firstLandingUrl', safeEncodeURIComponent(window.location.href));
+    if (!getCookie('firstLandingUrlDateTime')) setCookie('firstLandingUrlDateTime', new Date().toISOString());
+  }
+
+  // ===== First Click capture (pushes DECODED values to GA4 and cookies if missing) =====
+  function captureFirstClick() {
+    if (!getCookie('firstClickUrl')) setCookie('firstClickUrl', safeEncodeURIComponent(window.location.href));
+    if (!getCookie('firstClickUrlDateTime')) setCookie('firstClickUrlDateTime', new Date().toISOString());
+
+    // Envia evento pro GA4 via dataLayer (com valores decodificados p/ leitura humana)
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      event: 'parametros_blog',
+      event_category: 'engagement',
+      event_label: window.location.pathname,
+      referrer:               safeDecodeURIComponent(getCookie('referrer') || ''),
+      landing_url:            safeDecodeURIComponent(getCookie('landingUrl') || ''),
+      device:                 safeDecodeURIComponent(getCookie('device') || ''),
+      first_click_url:        safeDecodeURIComponent(getCookie('firstClickUrl') || ''),
+      first_click_datetime:   getCookie('firstClickUrlDateTime') || '',
+      first_landing_url:      safeDecodeURIComponent(getCookie('firstLandingUrl') || ''),
+      first_landing_datetime: getCookie('firstLandingUrlDateTime') || ''
+    });
+  }
+
+  // ===== URL builder (DECODE cookies -> URLSearchParams does SINGLE encoding) =====
+  function urlBuilder() {
+    var baseUrl = 'https://www.trinks.com/programa-para-salao-de-beleza/cadastrar-meu-estabelecimento/dados-iniciais';
+    var params = new URLSearchParams({
+      referrer:               safeDecodeURIComponent(getCookie('referrer') || ''),
+      landingUrl:             safeDecodeURIComponent(getCookie('landingUrl') || ''),
+      dispositivo:            safeDecodeURIComponent(getCookie('device') || ''),
+      firstClickUrl:          safeDecodeURIComponent(getCookie('firstClickUrl') || ''),
+      firstClickUrlDateTime:  getCookie('firstClickUrlDateTime') || '',
+      firstLandingUrl:        safeDecodeURIComponent(getCookie('firstLandingUrl') || ''),
+      firstLandingUrlDateTime:getCookie('firstLandingUrlDateTime') || ''
+    });
+    return baseUrl + '?' + params.toString();
+  }
+
+  function interceptAndRedirect() {
+    captureFirstClick();
+    var finalUrl = urlBuilder();
+    window.location.href = finalUrl;
+  }
+
+  // ===== Link Interceptor (debug) =====
+  function setupLinkInterceptor() {
+    var targetUrlPart = 'trinks.com/programa-para-salao-de-beleza/cadastrar-meu-estabelecimento/dados-iniciais';
+
+    document.addEventListener('click', function(e) {
+      var link = e.target.closest('a');
+      if (link && link.href) {
+        console.log('Trinks Debug: Um link foi clicado. A verificar destino:', link.href);
+        if (link.href.includes(targetUrlPart)) {
+          console.log('Trinks Debug: Link para o site principal FOI INTERCEPTADO!', link.href);
+          e.preventDefault();
+          interceptAndRedirect();
+        } else {
+          console.log('Trinks Debug: O link clicado não corresponde ao alvo.');
         }
       }
-      return null;
-    }
+    }, true);
+  }
 
-    // Captura os dados reais do navegador e os salva nos cookies, se ainda não estiverem definidos
-    function initCookies() {
-      // Captura a URL de origem, disponível no document.referrer
-      if (!getCookie('referrer')) {
-        setCookie('referrer', encodeURIComponent(document.referrer || ''));
-      }
-      
-      // Captura a URL atual (landing URL)
-      if (!getCookie('landingUrl')) {
-        setCookie('landingUrl', encodeURIComponent(window.location.href));
-      }
-      
-      // Detecta o dispositivo (exemplo simples: com base na largura da janela)
-      if (!getCookie('device')) {
-        const device = window.innerWidth < 768 ? 'mobile' : 'desktop';
-        setCookie('device', encodeURIComponent(device));
-      }
-      
-      // Armazena a primeira landing URL e a data/hora de acesso, caso não estejam definidos
-      if (!getCookie('firstLandingUrl')) {
-        setCookie('firstLandingUrl', encodeURIComponent(window.location.href));
-      }
-      if (!getCookie('firstLandingUrlDateTime')) {
-        setCookie('firstLandingUrlDateTime', new Date().toISOString());
-      }
-      
-      // Os dados do primeiro clique serão capturados no momento do clique, se ainda não estiverem setados
-    }
-
-    // Captura os dados do primeiro clique e os salva caso ainda não existam
-    function captureFirstClick() {
-      if (!getCookie('firstClickUrl')) {
-        setCookie('firstClickUrl', encodeURIComponent(window.location.href));
-      }
-      if (!getCookie('firstClickUrlDateTime')) {
-        setCookie('firstClickUrlDateTime', new Date().toISOString());
-      }
-    }
-
-    // Monta a URL de redirecionamento utilizando os dados dos cookies
-    function urlBuilder() {
-      const baseUrl = 'SUA URL AQUI;
-      const params = new URLSearchParams({
-        referrer: getCookie('referrer') || '',
-        landingUrl: getCookie('landingUrl') || '',
-        dispositivo: getCookie('device') || '',
-        firstClickUrl: getCookie('firstClickUrl') || '',
-        firstClickUrlDateTime: getCookie('firstClickUrlDateTime') || '',
-        firstLandingUrl: getCookie('firstLandingUrl') || '',
-        firstLandingUrlDateTime: getCookie('firstLandingUrlDateTime') || ''
-      });
-      return `${baseUrl}?${params.toString()}`;
-    }
-
-    // Intercepta a URL, captura dados do primeiro clique e exibe um prompt de confirmação antes do redirecionamento
-    function interceptAndRedirect() {
-      captureFirstClick();
-      const url = urlBuilder();
-      console.log("URL gerada:", url);
-      if (confirm("Você será redirecionado para:\n\n" + url + "\n\nContinuar?")) {
-        window.location.href = url;
-      } else {
-        console.log("Redirecionamento cancelado.");
-      }
-    }
-
-    // Exibe a URL montada na página para visualização dos parâmetros
-    function displayParameters() {
-      const url = urlBuilder();
-      document.getElementById("parameters").textContent = url;
-    }
-
-    // Inicializa a captura dos dados do navegador assim que a página carregar
+  // ===== Boot =====
+  if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
       initCookies();
-      displayParameters();
+      setupLinkInterceptor();
     });
-  </script>
+  } else {
+    initCookies();
+    setupLinkInterceptor();
+  }
+
+  // Expor util p/ testes
+  window.interceptAndRedirect = interceptAndRedirect;
+})();
+</script>
+
 </head>
 <body>
   <h1>Teste de Redirecionamento - Dados do Navegador</h1>
