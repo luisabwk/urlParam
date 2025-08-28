@@ -1,0 +1,114 @@
+<script>
+(function(){
+  // ===== Helpers =====
+  function setCookie(name, value, days) {
+    if (typeof days === 'undefined') days = 30;
+    var expires = new Date();
+    expires.setDate(expires.getDate() + days);
+    document.cookie = name + '=' + value + ';expires=' + expires.toUTCString() + ';path=/';
+  }
+  function getCookie(name) {
+    var cookies = document.cookie.split(';');
+    for (var i = 0; i < cookies.length; i++) {
+      var c = cookies[i].trim();
+      if (c.indexOf(name + '=') === 0) {
+        return c.substring(name.length + 1);
+      }
+    }
+    return null;
+  }
+  function safeEncodeURIComponent(str) {
+    try { return encodeURIComponent(str || ''); } catch (e) { return ''; }
+  }
+  function safeDecodeURIComponent(str) {
+    try { return decodeURIComponent(str || ''); } catch (e) { return str || ''; }
+  }
+
+  // ===== Cookie init (stores ENCODED values to be URL-safe in storage) =====
+  function initCookies() {
+    if (!getCookie('referrer')) setCookie('referrer', safeEncodeURIComponent(document.referrer || ''));
+    if (!getCookie('landingUrl')) setCookie('landingUrl', safeEncodeURIComponent(window.location.href));
+    if (!getCookie('device')) {
+      var device = window.innerWidth < 768 ? 'mobile' : 'desktop';
+      setCookie('device', safeEncodeURIComponent(device));
+    }
+    if (!getCookie('firstLandingUrl')) setCookie('firstLandingUrl', safeEncodeURIComponent(window.location.href));
+    if (!getCookie('firstLandingUrlDateTime')) setCookie('firstLandingUrlDateTime', new Date().toISOString());
+  }
+
+  // ===== First Click capture (pushes DECODED values to GA4 and cookies if missing) =====
+  function captureFirstClick() {
+    if (!getCookie('firstClickUrl')) setCookie('firstClickUrl', safeEncodeURIComponent(window.location.href));
+    if (!getCookie('firstClickUrlDateTime')) setCookie('firstClickUrlDateTime', new Date().toISOString());
+
+    // Envia evento pro GA4 via dataLayer (com valores decodificados p/ leitura humana)
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      event: 'parametros_blog',
+      event_category: 'engagement',
+      event_label: window.location.pathname,
+      referrer:               safeDecodeURIComponent(getCookie('referrer') || ''),
+      landing_url:            safeDecodeURIComponent(getCookie('landingUrl') || ''),
+      device:                 safeDecodeURIComponent(getCookie('device') || ''),
+      first_click_url:        safeDecodeURIComponent(getCookie('firstClickUrl') || ''),
+      first_click_datetime:   getCookie('firstClickUrlDateTime') || '',
+      first_landing_url:      safeDecodeURIComponent(getCookie('firstLandingUrl') || ''),
+      first_landing_datetime: getCookie('firstLandingUrlDateTime') || ''
+    });
+  }
+
+  // ===== URL builder (DECODE cookies -> URLSearchParams does SINGLE encoding) =====
+  function urlBuilder() {
+    var baseUrl = 'https://www.trinks.com/programa-para-salao-de-beleza/cadastrar-meu-estabelecimento/dados-iniciais';
+    var params = new URLSearchParams({
+      referrer:               safeDecodeURIComponent(getCookie('referrer') || ''),
+      landingUrl:             safeDecodeURIComponent(getCookie('landingUrl') || ''),
+      dispositivo:            safeDecodeURIComponent(getCookie('device') || ''),
+      firstClickUrl:          safeDecodeURIComponent(getCookie('firstClickUrl') || ''),
+      firstClickUrlDateTime:  getCookie('firstClickUrlDateTime') || '',
+      firstLandingUrl:        safeDecodeURIComponent(getCookie('firstLandingUrl') || ''),
+      firstLandingUrlDateTime:getCookie('firstLandingUrlDateTime') || ''
+    });
+    return baseUrl + '?' + params.toString();
+  }
+
+  function interceptAndRedirect() {
+    captureFirstClick();
+    var finalUrl = urlBuilder();
+    window.location.href = finalUrl;
+  }
+
+  // ===== Link Interceptor (debug) =====
+  function setupLinkInterceptor() {
+    var targetUrlPart = 'trinks.com/programa-para-salao-de-beleza/cadastrar-meu-estabelecimento/dados-iniciais';
+
+    document.addEventListener('click', function(e) {
+      var link = e.target.closest('a');
+      if (link && link.href) {
+        console.log('Trinks Debug: Um link foi clicado. A verificar destino:', link.href);
+        if (link.href.includes(targetUrlPart)) {
+          console.log('Trinks Debug: Link para o site principal FOI INTERCEPTADO!', link.href);
+          e.preventDefault();
+          interceptAndRedirect();
+        } else {
+          console.log('Trinks Debug: O link clicado não corresponde ao alvo.');
+        }
+      }
+    }, true);
+  }
+
+  // ===== Boot =====
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      initCookies();
+      setupLinkInterceptor();
+    });
+  } else {
+    initCookies();
+    setupLinkInterceptor();
+  }
+
+  // Expor util p/ testes
+  window.interceptAndRedirect = interceptAndRedirect;
+})();
+</script>
