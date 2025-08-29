@@ -1,11 +1,13 @@
 // urlParam_v2.js
 (function(){
+  // ===== Config =====
+  var BASE_URL = 'https://www.trinks.com/programa-para-salao-de-beleza/cadastrar-meu-estabelecimento/dados-iniciais';
+
   // ===== Helpers =====
   function setCookie(name, value, days) {
     if (typeof days === 'undefined') days = 30;
     var expires = new Date();
     expires.setDate(expires.getDate() + days);
-    // Grava legível: sem URL-encode; sanitiza delimitadores
     var sanitized = String(value || '').replace(/[\r\n;]/g, ' ').trim();
     document.cookie = name + '=' + sanitized + ';expires=' + expires.toUTCString() + ';path=/;SameSite=Lax';
   }
@@ -40,6 +42,17 @@
     return maybeDecodeURIComponent(getCookie(name) || '');
   }
 
+  function normalizeForMatch(u) {
+    try {
+      var url = new URL(u, location.origin);
+      var host = url.host.replace(/^www\./, '');
+      var path = url.pathname.replace(/\/+$/,''); // sem barra final
+      return host + path;
+    } catch(e) { return ''; }
+  }
+
+  var BASE_MATCH = normalizeForMatch(BASE_URL);
+
   // ===== Cookie init (GRAVA SEM URL-ENCODE) =====
   function initCookies() {
     if (!getCookie('referrer')) setCookie('referrer', document.referrer || '');
@@ -53,8 +66,9 @@
   }
 
   // ===== First Click capture =====
-  function captureFirstClick() {
-    if (!getCookie('firstClickUrl')) setCookie('firstClickUrl', window.location.href);
+  // Agora guarda o DESTINO clicado (linkHref), e só quando o link bate com a BASE_URL
+  function captureFirstClick(linkHref) {
+    if (!getCookie('firstClickUrl')) setCookie('firstClickUrl', linkHref || window.location.href);
     if (!getCookie('firstClickUrlDateTime')) setCookie('firstClickUrlDateTime', new Date().toISOString());
 
     // Evento GA4 (valores legíveis)
@@ -75,7 +89,6 @@
 
   // ===== URL builder (URLSearchParams faz o ÚNICO encode na URL final) =====
   function urlBuilder() {
-    var baseUrl = 'https://www.trinks.com/programa-para-salao-de-beleza/cadastrar-meu-estabelecimento/dados-iniciais';
     var params = new URLSearchParams({
       referrer:               readCookieDecoded('referrer'),
       landingUrl:             readCookieDecoded('landingUrl'),
@@ -85,11 +98,11 @@
       firstLandingUrl:        readCookieDecoded('firstLandingUrl'),
       firstLandingUrlDateTime:getCookie('firstLandingUrlDateTime') || ''
     });
-    return baseUrl + '?' + params.toString();
+    return BASE_URL + '?' + params.toString();
   }
 
-  function interceptAndRedirect() {
-    captureFirstClick();
+  function interceptAndRedirect(linkHref) {
+    captureFirstClick(linkHref);
     var finalUrl = urlBuilder();
     renderDebugUrl(finalUrl); // mostra antes de redirecionar (debug)
     window.location.href = finalUrl;
@@ -126,22 +139,20 @@
     el.appendChild(pre);
   }
 
-  // ===== Link Interceptor (debug) =====
+  // ===== Link Interceptor =====
+  // Aciona SEMPRE que a âncora clicada tiver href que "bate" com a BASE_URL (ignorando http/https, www e barra final)
   function setupLinkInterceptor() {
-    var targetUrlPart = 'trinks.com/programa-para-salao-de-beleza/cadastrar-meu-estabelecimento/dados-iniciais';
-
     document.addEventListener('click', function(e) {
-      var link = e.target.closest('a');
-      if (link && link.href) {
-        console.log('Trinks Debug: Um link foi clicado. A verificar destino:', link.href);
-        if (link.href.includes(targetUrlPart)) {
-          console.log('Trinks Debug: Link para o site principal FOI INTERCEPTADO!', link.href);
-          e.preventDefault();
-          interceptAndRedirect();
-        } else {
-          console.log('Trinks Debug: O link clicado não corresponde ao alvo.');
-        }
-      }
+      var link = e.target && e.target.closest ? e.target.closest('a') : null;
+      if (!link || !link.href) return;
+
+      // normaliza e compara (host+path)
+      var matches = normalizeForMatch(link.href).startsWith(BASE_MATCH);
+      if (!matches) return;
+
+      // Intercepta e redireciona com parâmetros
+      e.preventDefault();
+      interceptAndRedirect(link.href);
     }, true);
   }
 
@@ -162,10 +173,10 @@
 
   // ===== Boot =====
   function boot() {
-    migrateDecodingIfNeeded(); // limpa qualquer legado encodado (inclui datas)
-    initCookies();             // garante presença dos básicos
+    migrateDecodingIfNeeded();
+    initCookies();
     setupLinkInterceptor();
-    renderDebugUrl();          // popula #parameters
+    renderDebugUrl();
   }
 
   if (document.readyState === 'loading') {
